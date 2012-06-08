@@ -1,0 +1,38 @@
+# Tweaker: A simple test framework
+
+## Installing
+
+    $> luarocks install tweaker
+
+## Running
+
+    $> tweak .
+
+### Usage
+
+    tweak <directory>
+
+## Using
+
+Tweaker collects tests from all the files found in `directory` that match
+`test*.lua` in those files you can define tests like follows.
+
+```lua
+local tweaker = require("tweaker")
+
+suite = tweaker.suite()
+
+local set_variable = nil
+
+suite.setup(function ()
+  set_variable = 10
+end)
+
+suite.teardown(function ()
+  set_variable = nil
+end)
+
+suite.is("my test", function ()
+  tweaker.assert_equal(set_variable, 10, "setup function ran")
+end)
+```

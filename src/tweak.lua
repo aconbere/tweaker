@@ -1,5 +1,8 @@
 #!/usr/bin/env lua
 
+local args  = {...}
+local start_dir = args[1] or "."
+
 local lfs = require("lfs")
 local tweaker = require("tweaker")
 
@@ -36,5 +39,5 @@ local function walk(dir)
   end
 end
 
-walk(".")
+walk(start_dir)
 tweaker:finish()
