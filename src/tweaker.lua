@@ -50,6 +50,17 @@ function Suite.assert_equal(a, b, user_msg)
               user_msg)
 end
 
+function Suite.assert_in(t, value, msg)
+  local set = {}
+  for i,v in ipairs(t) do
+    set[v] = true
+  end
+
+  Suite.error(set[value],
+              tostring(value).." not in found in table",
+              msg)
+end
+
 function Suite:setup(func)
   self._setup = func
 end

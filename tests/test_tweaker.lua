@@ -38,3 +38,11 @@ end)
 suite:is("regular failure", function()
   assert(45 == 23, "regular failure")
 end)
+
+suite:is("check inclusion found", function()
+  tweaker.assertIn({1,2,3}, 1, "should be in")
+end)
+
+suite:is("check inclusion not found", function()
+  tweaker.assertIn({1,2,3}, 4, "should be in")
+end)
