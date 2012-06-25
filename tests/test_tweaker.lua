@@ -40,9 +40,9 @@ suite:is("regular failure", function()
 end)
 
 suite:is("check inclusion found", function()
-  tweaker.assertIn({1,2,3}, 1, "should be in")
+  tweaker.assert_in({1,2,3}, 1, "should be in")
 end)
 
 suite:is("check inclusion not found", function()
-  tweaker.assertIn({1,2,3}, 4, "should be in")
+  tweaker.assert_in({1,2,3}, 4, "should be in")
 end)

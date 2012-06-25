@@ -16,7 +16,9 @@ end
 function Report:print()
   for name, err in pairs(self._errors) do
     print(color("bold", color("red", "["..name.."]: "..err.error_msg)))
-    print(err.traceback)
+    if err.traceback then
+      print(err.traceback)
+    end
   end
 end
 
@@ -73,28 +75,90 @@ function Suite:is(name, test_func)
   self._tests[name] = test_func
 end
 
-function Suite:runtest(name, test_func)
-  return xpcall(test_func, function(error_obj)
-    local info = debug.getinfo(5, "Sl")
-    local traceback = debug.traceback()
+local function parse_info(depth)
+  local lines = {}
 
-    if error_obj.type == __error__ then
-      traceback = string.format( "%s:%d", info.short_src, info.currentline)
+  --[[
+  Funny story: This function is mostly ripped right out of lunit. When I first
+  read it my puny scheme like brain immediately saw an oportunity to refactor
+  this while loop into a recursive function call.
+
+  When I had finished implimenting it, I kept running into an infinite loop.
+  At first I thought it was just another exception being raised inside my own
+  function. But after ages of debugging nothing was showing up.
+
+  Finally it occurred to me, that if you are walking down the stack recusively
+  every time you recurse you're also adding a new frame, so you just sit
+  there, endlessly replaying your recursive call.
+
+  I think this could be defeated by incrementing +2 instead of +1. But at that
+  point I think the while loop is clearer.
+
+  This ammused me greatly.
+  ]]
+
+  while true do
+    local info = debug.getinfo(depth, "Snlf")
+
+    if type(info) ~= "table" then
+      break
     end
 
-    self._report:add_error(name, { error_msg   = error_obj.error_msg or ""
-                                 , user_msg    = error_obj.user_msg
-                                 , traceback   = traceback
-                                 , currentline = info.currentline
-                                 , source      = info.short_src
-                                 })
+    local line = {}       -- Ripped from ldblib.c...
+
+    table.insert(line, string.format("%s:", info.short_src))
+
+    if info.currentline > 0 then
+      table.insert(line, string.format("%d:", info.currentline))
+    end
+
+    if info.namewhat ~= "" then
+      table.insert(line, string.format(" in function '%s'", info.name))
+    else
+      if info.what == "main" then
+        table.insert(line, " in main chunk")
+      elseif info.what == "C" or info.what == "tail" then
+        table.insert(line, " ?")
+      else
+        table.insert(line, string.format(" in function <%s:%d>", info.short_src, info.linedefined))
+      end
+    end
+    table.insert(lines, table.concat(line))
+    depth = depth + 1
+  end
+
+  return table.concat(lines, "\n")
+end
+
+local function _traceback(e)
+  local _error_obj = e
+  -- by the time we start popping off the stack we will be 4 deep from our
+  -- exception. determined by trial and error.
+  local tweaker_stack_depth = 4
+
+  if type(_error_obj) == "table" and _error_obj.type == __error__ then
+    local info = debug.getinfo(6, "Sl")
+    _error_obj.source = info.short_src
+    _error_obj.currentline = info.currentline
+    _error_obj.traceback = string.format( "%s:%d", info.short_src, info.currentline)
+  else
+    _error_obj = { error_msg = tostring(_error_obj) }
+    _error_obj.traceback = parse_info(tweaker_stack_depth)
+  end
+
+  return _error_obj
+end
+
+function Suite:runtest(name, test_func)
+  return xpcall(test_func, function(error_obj)
+    self._report:add_error(name, _traceback(error_obj))
   end)
 end
 
 function Suite:run()
   for name, test in pairs(self._tests) do
     self:_setup()
-    status, _results = self:runtest(name, test)
+    local status, _results = self:runtest(name, test)
     if status then
       io.write(".")
     else
